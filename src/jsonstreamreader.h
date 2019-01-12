@@ -52,12 +52,18 @@ using JsonStreamReaderPtr = std::shared_ptr<JsonStreamReader>;
 class JsonStreamReader {
 
     public:
+        JsonStreamReader(int socket) : socket{socket} {
+        }
+
         virtual ~JsonStreamReader() {};
         virtual char read() {
             char data;
             ::recv(socket, &data, sizeof(data), 0);
             return data;
         }
+
+    protected:
+        int socket;
 };
 
 
