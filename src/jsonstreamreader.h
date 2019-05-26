@@ -23,47 +23,55 @@
 #include <memory>
 #include <exception>
 
-#include <sys/types.h>
-#include <sys/socket.h>
+namespace moba::json {
 
-class JsonStreamReaderException : public std::exception {
+    class JsonStreamReaderException : public std::exception {
 
-    public:
-        virtual ~JsonStreamReaderException() throw() {
-        }
+        public:
+            virtual ~JsonStreamReaderException() throw() {
+            }
 
-        JsonStreamReaderException(const std::string &what) {
-            this->what__ = what;
-        }
+            JsonStreamReaderException(const std::string &what) {
+                this->what__ = what;
+            }
 
-        virtual const char* what() const throw() {
-            return this->what__.c_str();
-        }
+            virtual const char* what() const throw() {
+                return this->what__.c_str();
+            }
 
-    private:
-        std::string what__;
+        private:
+            std::string what__;
 
-};
+    };
 
-class JsonStreamReader;
+    class JsonStreamReader {
+        public:
+            virtual ~JsonStreamReader();
+            virtual char read() = 0;
 
-using JsonStreamReaderPtr = std::shared_ptr<JsonStreamReader>;
+            char peek();
 
-class JsonStreamReader {
+            char peek(bool ignoreWhitespace);
 
-    public:
-        JsonStreamReader(int socket) : socket{socket} {
-        }
+            void checkNext(const std::string &s);
 
-        virtual ~JsonStreamReader() {};
-        virtual char read() {
-            char data;
-            ::recv(socket, &data, sizeof(data), 0);
-            return data;
-        }
+            void checkNext(const std::string &s, bool ignoreWhitespace);
 
-    protected:
-        int socket;
-};
+            void checkNext(char x);
 
+            void checkNext(char x, bool ignoreWhitespace);
 
+            char next();
+
+            char next(bool ignoreWhitespace);
+
+            std::string next(int n, bool ignoreWhitespace);
+
+            std::string next(int n);
+
+        protected:
+            char lastChar = 0;
+    };
+
+    using JsonStreamReaderPtr = std::shared_ptr<JsonStreamReader> ;
+}

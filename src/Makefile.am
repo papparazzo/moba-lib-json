@@ -1,9 +1,20 @@
 AUTOMAKE_OPTIONS = subdir-objects
-noinst_LIBRARIES = \
-    libmsghandling.a
-libmsghandling_a_SOURCES = \
-    jsondecoder.cpp
+lib_LTLIBRARIES = \
+    libmobajson.la
 
-LDFLAGS += -L/usr/local/lib
+libmobajson_la_SOURCES = \
+    jsonstreamreadersocket.cpp
 
-CLEANFILES = *~
+otherincludedir = \
+    $(includedir)/moba-json
+
+otherinclude_HEADERS = \
+    json.h \
+    jsonstreamreadersocket.h
+
+ACLOCAL_AMFLAGS = \
+    -I m4
+
+CLEANFILES = \
+    *~
+
