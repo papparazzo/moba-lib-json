@@ -77,9 +77,9 @@ namespace moba::json {
             JsonValue nextNumber();
             JsonValue parseNumber(std::string s);
 
-            bool strict;
-            static const int  MAX_STRING_LENGTH = 1024;
             char lastChar;
             JsonStreamReaderPtr reader;
+            bool strict;
+            static const int  MAX_STRING_LENGTH = 1024;
     };
 }

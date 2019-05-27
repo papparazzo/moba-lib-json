@@ -25,6 +25,7 @@
 #include <exception>
 #include <sstream>
 #include <iostream>
+#include <cstddef>
 
 namespace moba::json {
 
@@ -266,7 +267,7 @@ namespace moba::json {
 
         try {
             if(b == '0' && s.length() > 2 && (s[1] == 'x' || s[1] == 'X')) {
-                return strtol(&(s.c_str()[2]), NULL, 16);
+                return strtol(&(s.c_str()[2]), nullptr, 16);
             }
 
             if(s.find('.') != std::string::npos || s.find('e') != std::string::npos || s.find('E') != std::string::npos) {
