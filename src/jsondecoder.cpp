@@ -85,7 +85,7 @@ namespace moba::json {
             if(object.find(key) != object.end()) {
                 throw JsonException(std::string("duplicate key <") + key + ">");
             }
-            //object[key] = nextValue();
+            object[key] = nextValue();
 
             switch(next(!strict)) {
                 case ',':
@@ -266,7 +266,7 @@ namespace moba::json {
 
         try {
             if(b == '0' && s.length() > 2 && (s[1] == 'x' || s[1] == 'X')) {
-               // return strtol(&(s.c_str()[2]), NULL, 16);
+                return strtol(&(s.c_str()[2]), NULL, 16);
             }
 
             if(s.find('.') != std::string::npos || s.find('e') != std::string::npos || s.find('E') != std::string::npos) {
@@ -277,7 +277,7 @@ namespace moba::json {
                 return output;
             }
 
-            //return atol(s.c_str());
+            return atol(s.c_str());
         } catch(std::exception &e) {
             throw JsonException(std::string("parsing, error could not determine value: <") + std::string(e.what()) + ">");
         }
