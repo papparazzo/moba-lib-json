@@ -22,10 +22,10 @@
 
 #include <memory>
 
-#include "jsonabstractitem.h"
+#include "json.h"
 #include "jsonstreamreader.h"
 
-namespace moba {
+namespace moba::json {
 
     class JsonException : public std::exception {
 
@@ -53,8 +53,10 @@ namespace moba {
     class JsonDecoder {
 
         public:
-            JsonDecoder(JsonStreamReaderPtr reader, bool strict = false) : lastChar(0), reader(reader), strict(strict) {}
-            JsonItemPtr decode();
+            JsonDecoder(JsonStreamReaderPtr reader, bool strict = false);
+            virtual ~JsonDecoder();
+
+            JsonValue decode();
 
         protected:
             void checkNext(const char x);
@@ -62,15 +64,18 @@ namespace moba {
             std::string next(int n);
             std::string nextKey();
 
-            JsonItemPtr nextValue();
-            JsonItemPtr parseValue(const std::string &s);
-            JsonItemPtr nextJValue();
+            JsonValue nextValue();
 
-            JsonStringPtr nextString();
-            JsonObjectPtr nextObject();
-            JsonArrayPtr nextArray();
+            JsonValue nextNull();
+            JsonValue nextTrue();
+            JsonValue nextFalse();
 
-            char read();
+            JsonValue nextString();
+            JsonValue nextObject();
+            JsonValue nextArray();
+
+            JsonValue nextNumber();
+            JsonValue parseNumber(std::string s);
 
             bool strict;
             static const int  MAX_STRING_LENGTH = 1024;

@@ -19,113 +19,31 @@
  */
 
 #include "jsondecoder.h"
+#include "json.h"
 
 #include <boost/algorithm/string.hpp>
 #include <exception>
 #include <sstream>
 #include <iostream>
 
-namespace moba {
+namespace moba::json {
 
-    JsonItemPtr JsonDecoder::decode()  {
-        this->checkNext('{');
-        return this->nextObject();
+    JsonDecoder::JsonDecoder(JsonStreamReaderPtr reader, bool strict) : lastChar(0), reader(reader), strict(strict) {
     }
 
-    void JsonDecoder::checkNext(const char x) {
-        char c = this->next(!this->strict);
-        if(c != x) {
-            throw JsonException(
-                std::string("expected '") +
-                std::string(1, x) + "' found '" +
-                std::string(1, c) + "'!"
-            );
-        }
+    JsonDecoder::~JsonDecoder() {
+
     }
 
-    char JsonDecoder::read() {
-        return this->reader->read();
-    }
-
-    char JsonDecoder::next(bool ignoreWhitespace) {
-        if(this->lastChar != 0) {
-            char t = this->lastChar;
-            this->lastChar = 0;
-            return t;
-        }
-        char c;
-        do {
-            c = this->read();
-        } while(::isspace(c) && ignoreWhitespace);
-
-        if(c == -1 || c == 0) {
-            throw JsonException("input stream corrupted!");
-        }
-        return c;
-    }
-
-    std::string JsonDecoder::next(int n) {
-        std::stringstream ss;
-
-        if(n == 0) {
-            return "";
-        }
-
-        for(int i = 0; i < n; ++i) {
-            ss << this->next();
-        }
-        return ss.str();
-    }
-
-    JsonObjectPtr JsonDecoder::nextObject() {
-        JsonObjectPtr map(new JsonObject());
-        std::string key;
-        char c;
-
-        for(int i = 0; i < JsonDecoder::MAX_STRING_LENGTH; ++i) {
-            c = this->next(!this->strict);
-            switch(c) {
-                case '}':
-                    return map;
-
-                case '"':
-                    key = this->nextKey();
-                    break;
-
-                default:
-                    throw JsonException("invalid key");
-            }
-            this->checkNext(':');
-
-            if(map->find(key) != map->end()) {
-                throw JsonException(std::string("duplicate key <") + key + ">");
-            }
-            (*map)[key] = this->nextValue();
-
-            switch(this->next(!this->strict)) {
-                case ',':
-                    c = this->next(!this->strict);
-                    if(c == '}') {
-                        throw JsonException("expected new key");
-                    }
-                    this->lastChar = c;
-                    break;
-
-                case '}':
-                    return map;
-
-                default:
-                    throw JsonException("expected a ',' or '}'");
-            }
-        }
-        throw JsonException("maximum string-length reached!");
+    JsonValue JsonDecoder::decode()  {
+        return nextObject();
     }
 
     std::string JsonDecoder::nextKey() {
         std::stringstream sb;
 
         for(int i = 0; i < JsonDecoder::MAX_STRING_LENGTH; ++i) {
-            char c = this->next();
+            char c = next();
 
             if(isspace(c) || !(isalnum(c) || c == '_' || c == '"')) {
                 throw JsonException("key contains invalide char!");
@@ -144,29 +62,91 @@ namespace moba {
         throw JsonException("maximum string-length reached!");
     }
 
-    JsonItemPtr JsonDecoder::nextValue() {
-        char c = this->next(!this->strict);
+    JsonValue JsonDecoder::nextObject() {
+        JsonObject object;
+        std::string key;
+        char c;
+
+        for(int i = 0; i < JsonDecoder::MAX_STRING_LENGTH; ++i) {
+            c = next(!strict);
+            switch(c) {
+                case '}':
+                    return object;
+
+                case '"':
+                    key = nextKey();
+                    break;
+
+                default:
+                    throw JsonException("invalid key");
+            }
+            checkNext(':');
+
+            if(object.find(key) != object.end()) {
+                throw JsonException(std::string("duplicate key <") + key + ">");
+            }
+            //object[key] = nextValue();
+
+            switch(next(!strict)) {
+                case ',':
+                    break;
+
+                case '}':
+                    return object;
+
+                default:
+                    throw JsonException("expected a ',' or '}'");
+            }
+        }
+        throw JsonException("maximum string-length reached!");
+    }
+
+    JsonValue JsonDecoder::nextValue() {
+        char c = reader->peek(!strict);
         switch(c) {
+            case 'n':
+                return nextNull();
+
+            case 't':
+                return nextTrue();
+
+            case 'f':
+                return nextFalse();
+
             case '"':
-                return this->nextString();
+                return nextString();
 
             case '{':
-                return this->nextObject();
+                return nextObject();
 
             case '[':
-                return this->nextArray();
+                return nextArray();
 
             default:
-                this->lastChar = c;
-                return this->nextJValue();
+                return nextNumber();
         }
     }
 
-    JsonStringPtr JsonDecoder::nextString() {
+    JsonValue JsonDecoder::nextNull() {
+        reader->checkNext("null", !strict);
+        return nullptr;
+    }
+
+    JsonValue JsonDecoder::nextTrue() {
+        reader->checkNext("true", !strict);
+        return true;
+    }
+
+    JsonValue JsonDecoder::nextFalse() {
+        reader->checkNext("false", !strict);
+        return false;
+    }
+
+    JsonValue JsonDecoder::nextString() {
         char c;
         std::stringstream sb;
         for(int i = 0; i < JsonDecoder::MAX_STRING_LENGTH; ++i) {
-            c = this->next();
+            c = next();
             switch(c) {
                 case '\n':
                 case '\r':
@@ -211,7 +191,7 @@ namespace moba {
                     break;
 
                 case '"':
-                    return toJsonStringPtr(sb.str());
+                    return sb.str();
 
                 default:
                     sb << c;
@@ -221,27 +201,28 @@ namespace moba {
         throw JsonException("maximum string-length reached!");
     }
 
-    JsonArrayPtr JsonDecoder::nextArray() {
-        JsonArrayPtr v(new JsonArray());
+    JsonValue JsonDecoder::nextArray() {
+        JsonArray array;
 
-        char c = this->next();
+        reader->checkNext('[', !strict);
+        char c = reader->peek(!strict);
 
         if(c == ']') {
-            return v;
+            return array;
         }
-        this->lastChar = c;
-        v->push_back(this->nextValue());
+        lastChar = c;
+        array.emplace_back(nextValue());
 
         while(true) {
-            c = this->next();
+            c = reader->next();
 
             switch(c) {
                 case ',':
-                    v->push_back(this->nextValue());
+                    array.emplace_back(nextValue());
                     break;
 
                 case ']':
-                    return v;
+                    return array;
 
                 default:
                     throw JsonException("expected ',' or ']'");
@@ -249,23 +230,20 @@ namespace moba {
         }
     }
 
-    JsonItemPtr JsonDecoder::nextJValue()  {
+    JsonValue JsonDecoder::nextNumber() {
         char c;
         std::stringstream sb;
         for(int i = 0; i < JsonDecoder::MAX_STRING_LENGTH; ++i) {
-            c = this->next();
+            c = reader->peek(!strict);
 
             if(c == ',' || c == ']' || c == '}') {
-                this->lastChar = c;
-                return this->parseValue(sb.str());
+                lastChar = c;
+                return parseNumber(sb.str());
             }
 
-            if(
-                (c >= 'A' && c <= 'Z') ||
-                (c >= 'a' && c <= 'z') ||
-                (c >= '0' && c <= '9') ||
-                c == '-' || c == '+'
-            ) {
+            reader->next();
+
+            if((c >= '0' && c <= '9') || c == '-' || c == 'e' || c == 'E' || c == '.' || c == 'x' || c == 'X') {
                 sb << c;
                 continue;
             }
@@ -274,54 +252,34 @@ namespace moba {
         throw JsonException("maximum string-length reached!");
     }
 
-    JsonItemPtr JsonDecoder::parseValue(const std::string &s) {
+    JsonValue JsonDecoder::parseNumber(std::string s) {
+        boost::algorithm::trim(s);
+
         if(!s.length()) {
             throw JsonException("empty value");
         }
 
-        if(boost::iequals(s, "true")) {
-            return toJsonBoolPtr(true);
-        }
-        if(boost::iequals(s, "false")) {
-            return toJsonBoolPtr(false);
-        }
-        if(boost::iequals(s, "null")) {
-            return toJsonNULLPtr();
-        }
         char b = s[0];
-        try {
-            if((b >= '0' && b <= '9') || b == '-') {
-                if(
-                    b == '0' &&
-                    s.length() > 2 &&
-                    (s[1] == 'x' || s[1] == 'X')
-                ) {
-                    return JsonItemPtr(
-                        new JsonNumber<long int>(strtol(&(s.c_str()[2]), NULL, 16))
-                    );
-                }
-
-                if(
-                    s.find('.') != std::string::npos ||
-                    s.find('e') != std::string::npos ||
-                    s.find('E') != std::string::npos
-                ) {
-                    std::stringstream buffer;
-                    double output;
-                    buffer << s;
-                    buffer >> output;
-                    return toJsonNumberPtr(output);
-                }
-                return toJsonNumberPtr(atol(s.c_str()));
-            }
-        } catch(std::exception &e) {
-            throw JsonException(
-                std::string("parsing, error could not determine value: <") +
-                std::string(e.what()) + ">"
-            );
+        if(!(b >= '0' && b <= '9') && b != '-') {
+            throw JsonException("parsing error, number starts not with digit or -");
         }
-        std::cout << "---" << s << "---" << std::endl;
 
-        throw JsonException("parsing error, could not determine value" );
+        try {
+            if(b == '0' && s.length() > 2 && (s[1] == 'x' || s[1] == 'X')) {
+               // return strtol(&(s.c_str()[2]), NULL, 16);
+            }
+
+            if(s.find('.') != std::string::npos || s.find('e') != std::string::npos || s.find('E') != std::string::npos) {
+                std::stringstream buffer;
+                double output;
+                buffer << s;
+                buffer >> output;
+                return output;
+            }
+
+            //return atol(s.c_str());
+        } catch(std::exception &e) {
+            throw JsonException(std::string("parsing, error could not determine value: <") + std::string(e.what()) + ">");
+        }
     }
 }
