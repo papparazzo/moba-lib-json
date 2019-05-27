@@ -12,6 +12,7 @@ otherincludedir = \
 otherinclude_HEADERS = \
     json.h \
     jsonstreamreadersocket.h \
+    jsonstreamreader.h \
     jsondecoder.h
 
 ACLOCAL_AMFLAGS = \
