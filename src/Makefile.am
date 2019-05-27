@@ -21,3 +21,5 @@ ACLOCAL_AMFLAGS = \
 CLEANFILES = \
     *~
 
+AM_CPPFLAGS = \
+    -g3 -g -ggdb -O3 -Wall
