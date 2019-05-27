@@ -3,14 +3,16 @@ lib_LTLIBRARIES = \
     libmobajson.la
 
 libmobajson_la_SOURCES = \
-    jsonstreamreadersocket.cpp
+    jsonstreamreadersocket.cpp \
+    jsondecoder.cpp
 
 otherincludedir = \
     $(includedir)/moba-json
 
 otherinclude_HEADERS = \
     json.h \
-    jsonstreamreadersocket.h
+    jsonstreamreadersocket.h \
+    jsondecoder.h
 
 ACLOCAL_AMFLAGS = \
     -I m4
