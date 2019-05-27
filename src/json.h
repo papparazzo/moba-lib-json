@@ -25,7 +25,7 @@
 #include <variant>
 
 namespace moba::json {
-    class JsonValue;
+    struct JsonValue;
 
     using JsonObject = std::map<std::string, JsonValue>;
 
@@ -33,8 +33,12 @@ namespace moba::json {
 
     using JsonNull = std::nullptr_t;
 
-    class JsonValue : public std::variant<double, std::string, int, bool, JsonArray, JsonObject, JsonNull> {
+    using JsonBase = std::variant<double, std::string, int, bool, JsonArray, JsonObject, JsonNull>;
 
+    struct JsonValue : public JsonBase {
+        template <typename T>
+        JsonValue(const T& t) : JsonBase(t) {
+        }
     };
 }
 
